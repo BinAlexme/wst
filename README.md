@@ -44,7 +44,7 @@ $folders = @(
     - запрос на удаление
     - перенос профиля
 
-[Видео](https://github.com/BinAlexme/wst/blob/master/C6E65Okujbnb.gif?raw=true)
+![Видео](https://github.com/BinAlexme/wst/blob/master/C6E65Okujbnb.gif?raw=true)
 
 ### Пример
 Для примера сделал на своей основе дисков. У вас порядок может отличаться.
