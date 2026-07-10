@@ -20,4 +20,5 @@ $folders = @(
         $userdataSource = "T:\userdata"
         $userdataDestination = "T:\userdatawst"
 ```
-3. Запуск 
+3. Запуск
+![start](https://github.com/BinAlexme/wst/blob/master/C6EOkujbnb.gif?raw=true)
