@@ -4,7 +4,7 @@ Write-Host "1 - Содержимое папок"
 Write-Host "2 - Содержимое папок + проверка userdata"
 $choice = Read-Host "Введите 1 или 2"
 
-$folders = @(
+$folders = @( # <--- тут впишите свои источники которые должны будут стираться без подтверждений
     "V:\Program Files (x86)\Steam\appcache",
     "V:\Program Files (x86)\Steam\config",
     "V:\Program Files (x86)\Steam\depotcache",
@@ -14,7 +14,7 @@ $folders = @(
 )
 
 $confirmFolders = @(
-    "V:\Program Files (x86)\Steam\userdata"
+    "V:\Program Files (x86)\Steam\userdata" # <--- тут свой путь к профелю
 )
 
 function Clear-FolderContent {
@@ -88,8 +88,8 @@ switch ($choice) {
         }
 
         Write-Host "`nПеремещение userdata..." -ForegroundColor Yellow
-        $userdataSource = "V:\Program Files (x86)\Steam\userdata"
-        $userdataDestination = "T:\userdatawst"
+        $userdataSource = "V:\Program Files (x86)\Steam\userdata" # <--- тут свой путь ссылаясь чтобы пропустить в папку ниже 
+        $userdataDestination = "T:\userdatawst" # <--- тут свой путь куда перемещать профиль
 
         if (Test-Path $userdataSource -PathType Container) {
             $content = Get-ChildItem -LiteralPath $userdataSource -Force
