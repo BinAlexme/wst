@@ -14,7 +14,9 @@ $folders = @(
             "V:\Program Files (x86)\Steam\logs"
 ```
 2.Папка `userdata` как пример -> второй пункт
+
 Здесь прописываете путь к первой папке `userdata` - или другой папке что нужно перекинуть.
+
 Второй пусть к папке куда перемещать данные. 
 ```PowerShell
         $userdataSource = "T:\userdata"
