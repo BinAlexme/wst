@@ -43,6 +43,7 @@ $folders = @(
 - `2` — очистка + с userdata:
     - запрос на удаление
     - перенос профиля
+- `3` — дополнительно менять папке имя на дату
 
 ![Видео](https://github.com/BinAlexme/wst/blob/master/C6E65Okujbnb.gif?raw=true)
 
