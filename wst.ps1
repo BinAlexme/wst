@@ -1,4 +1,39 @@
 ﻿Clear-Host
+
+$userdataPath = "V:\Program Files (x86)\Steam\userdata"
+
+# Проверка userdata
+if (Test-Path $userdataPath -PathType Container) {
+    Write-Host "Содержимое папки: $userdataPath`n" -ForegroundColor Cyan
+
+    $userdataItems = Get-ChildItem -LiteralPath $userdataPath -Force
+
+    if ($userdataItems.Count -eq 0) {
+        Write-Host "Папка userdata пустая." -ForegroundColor DarkGray
+    }
+    else {
+        # Вывод списка
+        foreach ($item in $userdataItems) {
+            $type = if ($item.PSIsContainer) { "[DIR] " } else { "      " }
+            Write-Host "$type$($item.Name)" -ForegroundColor White
+        }
+    }
+
+    $continue = Read-Host "`nПродолжить выполнение скрипта? (y/n)"
+    if ($continue -notmatch '^(да|y|yes)$') {
+        Write-Host "Работа скрипта отменена пользователем." -ForegroundColor Yellow
+        return
+    }
+}
+else {
+    Write-Host "Папка userdata не найдена: $userdataPath" -ForegroundColor DarkYellow
+    $continue = Read-Host "Продолжить выполнение скрипта без проверки userdata? (y/n)"
+    if ($continue -notmatch '^(да|y|yes)$') {
+        Write-Host "Работа скрипта отменена пользователем." -ForegroundColor Yellow
+        return
+    }
+}
+
 Write-Host "Выберите действие:"
 Write-Host "1 - Содержимое папки"
 Write-Host "2 - Содержимое папки + перенос"
