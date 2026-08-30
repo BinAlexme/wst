@@ -1,18 +1,44 @@
 ﻿Clear-Host
 
-$userdataPath = "V:\Program Files (x86)\Steam\userdata"
+# Функция для получения всех дисков системы
+function Get-AllDrives {
+    Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Root
+}
+
+# Тихая функция для поиска папки Steam и userdata
+function Find-SteamUserdata-Quiet {
+    $allDrives = Get-AllDrives
+
+    foreach ($drive in $allDrives) {
+        # Ищем папку steam (рекурсивно, глубина 3 уровня)
+        $steamFolder = Get-ChildItem -Path $drive -Directory -Force -Recurse -Depth 3 -ErrorAction SilentlyContinue | 
+            Where-Object { $_.Name -eq "Steam" -or $_.Name -eq "steam" } |
+            Select-Object -First 1
+
+        if ($steamFolder) {
+            $userdataPath = Join-Path $steamFolder.FullName "userdata"
+
+            if (Test-Path $userdataPath -PathType Container) {
+                return $userdataPath
+            }
+        }
+    }
+
+    return $null
+}
+
+# Поиск папки userdata (тихий)
+$userdataPath = Find-SteamUserdata-Quiet
 
 # Проверка userdata
-if (Test-Path $userdataPath -PathType Container) {
-    Write-Host "Содержимое папки: $userdataPath`n" -ForegroundColor Cyan
-
+if ($userdataPath -and (Test-Path $userdataPath -PathType Container)) {
     $userdataItems = Get-ChildItem -LiteralPath $userdataPath -Force
 
     if ($userdataItems.Count -eq 0) {
         Write-Host "Папка userdata пустая." -ForegroundColor DarkGray
     }
     else {
-        # Вывод списка
+        Write-Host "Содержимое папки: $userdataPath`n" -ForegroundColor Cyan
         foreach ($item in $userdataItems) {
             $type = if ($item.PSIsContainer) { "[DIR] " } else { "      " }
             Write-Host "$type$($item.Name)" -ForegroundColor White
@@ -26,7 +52,7 @@ if (Test-Path $userdataPath -PathType Container) {
     }
 }
 else {
-    Write-Host "Папка userdata не найдена: $userdataPath" -ForegroundColor DarkYellow
+    Write-Host "Папка userdata не найдена автоматически." -ForegroundColor DarkYellow
     $continue = Read-Host "Продолжить выполнение скрипта без проверки userdata? (y/n)"
     if ($continue -notmatch '^(да|y|yes)$') {
         Write-Host "Работа скрипта отменена пользователем." -ForegroundColor Yellow
@@ -37,20 +63,23 @@ else {
 Write-Host "Выберите действие:"
 Write-Host "1 - Содержимое папки"
 Write-Host "2 - Содержимое папки + перенос"
-Write-Host "3 - Содержимое папки + перенос + переменовать в дату"
+Write-Host "3 - Содержимое папки + перенос + переименовать в дату"
 $choice = Read-Host "Введите цифру"
 
-$folders = @( # <--- тут впишите свои источники которые должны будут стираться без подтверждений
-    "V:\Program Files (x86)\Steam\appcache",
-    "V:\Program Files (x86)\Steam\config",
-    "V:\Program Files (x86)\Steam\depotcache",
-    "V:\Program Files (x86)\Steam\dumps",
-    "V:\Program Files (x86)\Steam\friends",
-    "V:\Program Files (x86)\Steam\logs"
+# Базовый путь Steam (будет найден автоматически)
+$steamBasePath = if ($userdataPath) { Split-Path $userdataPath -Parent } else { "V:\Program Files (x86)\Steam" }
+
+$folders = @(
+    (Join-Path $steamBasePath "appcache"),
+    (Join-Path $steamBasePath "config"),
+    (Join-Path $steamBasePath "depotcache"),
+    (Join-Path $steamBasePath "dumps"),
+    (Join-Path $steamBasePath "friends"),
+    (Join-Path $steamBasePath "logs")
 )
 
 $confirmFolders = @(
-    "V:\Program Files (x86)\Steam\userdata" # <--- тут свой путь к профилю
+    $userdataPath
 )
 
 function Clear-FolderContent {
@@ -60,11 +89,8 @@ function Clear-FolderContent {
     )
 
     if (Test-Path $FolderPath -PathType Container) {
-        Write-Host "`nУдаление содержимого: $FolderPath" -ForegroundColor Yellow
-
         $items = Get-ChildItem -LiteralPath $FolderPath -Force
         if ($items.Count -eq 0) {
-            Write-Host "Папка пустая." -ForegroundColor DarkGray
             return
         }
 
@@ -101,22 +127,19 @@ function Process-StandardCleanup {
     }
 
     foreach ($folder in $confirmFolders) {
-        if (Test-Path $folder -PathType Container) {
+        if ($folder -and (Test-Path $folder -PathType Container)) {
             $answer = Read-Host "`nОчистить папку '$folder'? (y/n)"
             if ($answer -match '^(да|y|yes)$') {
                 Clear-FolderContent -FolderPath $folder -ProgressTitle "Очистка подтвержденной папки"
-            }
-            else {
-                Write-Host "Пропуск: $folder" -ForegroundColor DarkGray
             }
         }
     }
 
     Write-Host "`nПеремещение userdata..." -ForegroundColor Yellow
-    $userdataSource = "V:\Program Files (x86)\Steam\userdata"
+    $userdataSource = $userdataPath
     $userdataDestination = "T:\userdatawst"
 
-    if (Test-Path $userdataSource -PathType Container) {
+    if ($userdataSource -and (Test-Path $userdataSource -PathType Container)) {
         $content = Get-ChildItem -LiteralPath $userdataSource -Force
         if ($content.Count -gt 0) {
             if (-not (Test-Path $userdataDestination -PathType Container)) {
@@ -135,19 +158,17 @@ function Process-StandardCleanup {
 
     Write-Progress -Activity "Перемещение userdata" -Completed
 
-    if ($RenameUserdataFolder) {
+    if ($RenameUserdataFolder -and $userdataDestination -and (Test-Path $userdataDestination -PathType Container)) {
         $dateName = Get-Date -Format "ddMMyy"
         $parentPath = Split-Path -Path $userdataDestination -Parent
         $newFolderPath = Join-Path $parentPath $dateName
 
-        if (Test-Path $userdataDestination -PathType Container) {
-            if (Test-Path $newFolderPath -PathType Container) {
-                Write-Host "Папка $newFolderPath уже существует." -ForegroundColor DarkYellow
-            }
-            else {
-                Rename-Item -Path $userdataDestination -NewName $dateName
-                Write-Host "Папка переименована в: $dateName" -ForegroundColor Green
-            }
+        if (Test-Path $newFolderPath -PathType Container) {
+            Write-Host "Папка $newFolderPath уже существует." -ForegroundColor DarkYellow
+        }
+        else {
+            Rename-Item -Path $userdataDestination -NewName $dateName
+            Write-Host "Папка переименована в: $dateName" -ForegroundColor Green
         }
     }
 
