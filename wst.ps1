@@ -1,16 +1,16 @@
 ﻿Clear-Host
 
-# Функция для получения всех дисков системы
+# Доступ ко всем дискам системы
 function Get-AllDrives {
     Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Root
 }
 
-# Тихая функция для поиска папки Steam и userdata
+# Поиск userdata в папке steam
 function Find-SteamUserdata-Quiet {
     $allDrives = Get-AllDrives
 
     foreach ($drive in $allDrives) {
-        # Ищем папку steam (рекурсивно, глубина 3 уровня)
+        # Ищем папку steam (алгоритм рекурсивный)
         $steamFolder = Get-ChildItem -Path $drive -Directory -Force -Recurse -Depth 3 -ErrorAction SilentlyContinue | 
             Where-Object { $_.Name -eq "Steam" -or $_.Name -eq "steam" } |
             Select-Object -First 1
@@ -27,7 +27,7 @@ function Find-SteamUserdata-Quiet {
     return $null
 }
 
-# Поиск папки userdata (тихий)
+# Поиск папки userdata
 $userdataPath = Find-SteamUserdata-Quiet
 
 # Проверка userdata
@@ -66,17 +66,53 @@ Write-Host "2 - Содержимое папки + перенос"
 Write-Host "3 - Содержимое папки + перенос + переименовать в дату"
 $choice = Read-Host "Введите цифру"
 
-# Базовый путь Steam (будет найден автоматически)
-$steamBasePath = if ($userdataPath) { Split-Path $userdataPath -Parent } else { "V:\Program Files (x86)\Steam" }
+# Путь к Steam (будет найден автоматически через userdata)
+$steamBasePath = if ($userdataPath) { Split-Path $userdataPath -Parent } else { $null }
 
-$folders = @(
-    (Join-Path $steamBasePath "appcache"),
-    (Join-Path $steamBasePath "config"),
-    (Join-Path $steamBasePath "depotcache"),
-    (Join-Path $steamBasePath "dumps"),
-    (Join-Path $steamBasePath "friends"),
-    (Join-Path $steamBasePath "logs")
+# Проверка еще раз
+if (-not $steamBasePath) {
+    $allDrives = Get-AllDrives
+    foreach ($drive in $allDrives) {
+        $steamFolder = Get-ChildItem -Path $drive -Directory -Force -Recurse -Depth 3 -ErrorAction SilentlyContinue | 
+            Where-Object { $_.Name -eq "Steam" -or $_.Name -eq "steam" } |
+            Select-Object -First 1
+
+        if ($steamFolder) {
+            $steamBasePath = $steamFolder.FullName
+            break
+        }
+    }
+}
+
+if (-not $steamBasePath -or -not (Test-Path $steamBasePath -PathType Container)) {
+    Write-Host "Папка Steam не найдена. Невозможно определить папки для очистки." -ForegroundColor Red
+    return
+}
+
+Write-Host "`nНайдена папка Steam: $steamBasePath" -ForegroundColor Green
+
+# Папки для очистки, которые лежат в Steam
+$cleanupFolderNames = @(
+    "appcache",
+    "config",
+    "depotcache",
+    "dumps",
+    "friends",
+    "logs"
 )
+
+# Автоматически находит эти папки внутри Steam
+$folders = @()
+foreach ($name in $cleanupFolderNames) {
+    $path = Join-Path $steamBasePath $name
+    if (Test-Path $path -PathType Container) {
+        $folders += $path
+        Write-Host "Найдена папка для очистки: $path" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "Папка не найдена (пропуск): $path" -ForegroundColor DarkGray
+    }
+}
 
 $confirmFolders = @(
     $userdataPath
